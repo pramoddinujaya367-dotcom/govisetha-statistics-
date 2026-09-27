@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Govisetha Statistics</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f3f6f4;margin:0;color:#222}
+header{background:#087f3e;color:white;padding:22px;text-align:center}
+.box{max-width:700px;margin:20px auto;background:white;padding:20px;border-radius:12px;box-shadow:0 2px 10px #bbb}
+input,button{width:100%;padding:12px;margin:7px 0;box-sizing:border-box;border-radius:7px;border:1px solid #bbb}
+button{background:#087f3e;color:white;border:0;font-size:16px}
+#app{display:none}
+.result{background:#eef8f1;padding:15px;border-radius:8px;margin-top:15px}
+</style>
+</head>
+<body>
+
+<header>
+<h1>ගොවිසෙත ලොතරැයි සංඛ්‍යාන විශ්ලේෂණය</h1>
+<p>දිනුම් අංක ඇතුළත් කර රටා පරීක්ෂා කරන්න</p>
+</header>
+
+<div class="box" id="login">
+<h2>Login</h2>
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+<p id="msg"></p>
+</div>
+
+<div class="box" id="app">
+<h2>දිනුම් අංක ඇතුළත් කරන්න</h2>
+<input id="numbers" placeholder="උදා: 03, 12, 18, 25, 31">
+<button onclick="analyze()">විශ්ලේෂණය කරන්න</button>
+
+<div class="result" id="result"></div>
+
+<hr>
+<h3>සටහන</h3>
+<p>මෙම මෙවලම පෙර දත්තවල සංඛ්‍යාත සහ රටා පෙන්වීම සඳහා පමණි. ලොතරැයි දිනුම් අහඹු බැවින් ඉදිරි දිනුම් අංක නිශ්චිතව අනාවැකි කළ නොහැක.</p>
+</div>
+
+<script>
+function login(){
+ let u=document.getElementById("user").value;
+ let p=document.getElementById("pass").value;
+ if(u==="admin" && p==="Pramod 123456"){
+   document.getElementById("login").style.display="none";
+   document.getElementById("app").style.display="block";
+ }else{
+   document.getElementById("msg").innerText="Username හෝ Password වැරදියි.";
+ }
+}
+
+function analyze(){
+ let a=document.getElementById("numbers").value
+   .split(",").map(x=>x.trim()).filter(x=>x!=="");
+ let count={};
+ a.forEach(n=>count[n]=(count[n]||0)+1);
+ let sorted=Object.entries(count).sort((x,y)=>y[1]-x[1]);
+ let text="<b>ඇතුළත් කළ අංක ගණන:</b> "+a.length+"<br><br>";
+ text+="<b>සංඛ්‍යාතය:</b><br>";
+ sorted.forEach(x=>text+=x[0]+" → "+x[1]+" වරක්<br>");
+ document.getElementById("result").innerHTML=text;
+}
+</script>
+
+</body>
+</html>
