@@ -2,383 +2,399 @@
 <html lang="si">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Govisetha Statistics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Store Manager POS Pro Max</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-body{
-font-family:Arial,sans-serif;
-background:#f3f6f4;
-margin:0;
-color:#222
-}
-header{
-background:#087f3e;
-color:white;
-padding:22px;
-text-align:center
-}
-.box{
-max-width:750px;
-margin:20px auto;
-background:white;
-padding:20px;
-border-radius:12px;
-box-shadow:0 2px 10px #bbb
-}
-input,button{
-width:100%;
-padding:12px;
-margin:7px 0;
-box-sizing:border-box;
-border-radius:7px;
-border:1px solid #bbb
-}
-button{
-background:#087f3e;
-color:white;
-border:0;
-font-size:16px
-}
-#app{
-display:none
-}
-.result{
-background:#eef8f1;
-padding:15px;
-border-radius:8px;
-margin-top:15px
-}
-.history{
-background:#f7faf8;
-padding:12px;
-margin:8px 0;
-border-left:5px solid #087f3e;
-border-radius:6px
-}
-.stat{
-padding:8px;
-border-bottom:1px solid #ddd
-}
+:root{ --primary:#1e3c72; --accent:#27ae60; --bg:#f5f7fb; }
+body{ background:var(--bg); font-family:Segoe UI,sans-serif; }
+.navbar-custom{ background:linear-gradient(135deg,#1e3c72,#2a5298); }
+.screen-overlay{ position:fixed; inset:0; background:rgba(15,23,42,.96); z-index:9999; display:none; align-items:center; justify-content:center; }
+.auth-card{ background:#fff; border-radius:18px; padding:28px; width:92%; max-width:460px; box-shadow:0 20px 40px rgba(0,0,0,.3); }
+.pin-input{ letter-spacing:12px; font-size:26px; text-align:center; font-weight:bold; }
+.thermal-receipt{ width:300px; background:#fff; padding:15px; font-family:monospace; font-size:12px; border:1px dashed #ccc; margin:auto; }
+#reader{ width: 100%; max-width: 400px; margin: auto; }
 </style>
 </head>
 
 <body>
 
-<header>
-<h1>ගොවිසෙත ලොතරැයි සංඛ්‍යාන විශ්ලේෂණය</h1>
-<p>පැරණි දිනුම් ප්‍රතිඵල සහ සංඛ්‍යාන</p>
-</header>
-
-<!-- LOGIN -->
-<div class="box" id="login">
-
-<h2>🔐 Login</h2>
-
-<input id="user" placeholder="Username">
-<input id="pass" type="password" placeholder="Password">
-
-<button onclick="login()">Login</button>
-
-<p id="msg"></p>
-
+<!-- LOCK & SETUP OVERLAY -->
+<div id="appLockOverlay" class="screen-overlay">
+<div class="auth-card text-center" id="lockCardContent"></div>
 </div>
 
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark navbar-custom sticky-top shadow-sm">
+<div class="container-fluid">
+<a class="navbar-brand fw-bold" href="#"><i class="fas fa-store me-2"></i><span id="navStoreName">Smart Store POS</span></a>
+<div class="d-flex align-items-center gap-2">
+ <select class="form-select form-select-sm" id="langSelect" onchange="changeLanguage(this.value)">
+  <option value="si">සිංහල</option>
+  <option value="en">English</option>
+ </select>
+ <button class="btn btn-outline-light btn-sm" onclick="lockApp()"><i class="fas fa-lock"></i></button>
+</div>
+</div>
+</nav>
 
-<!-- APP -->
-<div class="box" id="app">
+<div class="container-fluid py-3">
 
-<h2>🎟️ පැරණි ගොවිසෙත ප්‍රතිඵල</h2>
+<!-- MAIN TABS -->
+<ul class="nav nav-pills mb-3 nav-justified bg-white p-2 rounded-3 shadow-sm">
+ <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabPos"><i class="fas fa-cash-register"></i> <span data-i18n="pos">POS</span></button></li>
+ <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabStock"><i class="fas fa-boxes"></i> <span data-i18n="stock">Stock</span></button></li>
+ <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabReports"><i class="fas fa-chart-line"></i> <span data-i18n="reports">Reports</span></button></li>
+ <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabSettings"><i class="fas fa-cog"></i> <span data-i18n="settings">Settings</span></button></li>
+</ul>
 
-<p>
-දැනට ඇතුළත් කර ඇති දිනුම් ගණන:
-<b id="drawCount"></b>
-</p>
+<div class="tab-content">
 
-<div id="history"></div>
-
-<hr>
-
-<h2>📊 අංක සංඛ්‍යාතය</h2>
-
-<button onclick="showStatistics()">
-සංඛ්‍යාත විශ්ලේෂණය
-</button>
-
-<div class="result" id="result"></div>
-
-<hr>
-
-<h3>📝 සටහන</h3>
-
-<p>
-මෙය පැරණි දිනුම් ප්‍රතිඵල මත සංඛ්‍යාන පෙන්වන මෙවලමකි.
-ලොතරැයි දිනුම් අහඹු බැවින් ඉදිරි දිනුම් අංක නිශ්චිතව අනාවැකි කළ නොහැක.
-</p>
-
+<!-- POS TAB -->
+<div class="tab-pane fade show active" id="tabPos">
+<div class="row g-3">
+<div class="col-lg-7">
+<div class="card p-3 border-0 shadow-sm">
+ <div class="d-flex justify-content-between align-items-center mb-2">
+  <h5 class="fw-bold m-0" data-i18n="searchItem">Search Items</h5>
+  <button class="btn btn-primary btn-sm" onclick="openQrScanner()"><i class="fas fa-qrcode me-1"></i> <span data-i18n="scanQr">Camera QR Scan</span></button>
+ </div>
+ <input id="posSearch" class="form-control form-control-lg mb-3" placeholder="..." oninput="filterPosItems()">
+ <div class="row g-2" id="posItemList"></div>
+</div>
 </div>
 
+<div class="col-lg-5">
+<div class="card p-3 border-0 shadow-sm">
+ <h5 class="fw-bold" data-i18n="cart">Current Cart</h5>
+ <div class="table-responsive" style="max-height:280px">
+  <table class="table table-sm"><tbody id="cartTableBody"></tbody></table>
+ </div>
+ <div class="d-flex justify-content-between h4 text-success mt-2">
+  <span data-i18n="total">Total</span>: <b>Rs. <span id="cartTotal">0.00</span></b>
+ </div>
+ <button class="btn btn-success btn-lg w-100 mt-2" onclick="checkout()"><i class="fas fa-receipt"></i> <span data-i18n="checkout">Checkout</span></button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- STOCK TAB -->
+<div class="tab-pane fade" id="tabStock">
+<div class="card p-3 border-0 shadow-sm">
+ <div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="fw-bold m-0" data-i18n="stock">Stock Management</h5>
+  <button class="btn btn-primary" onclick="showAddItemModal()">+ Add Item</button>
+ </div>
+ <div class="table-responsive">
+  <table class="table table-hover">
+   <thead class="table-dark"><tr><th>Code</th><th>Name</th><th>Cost</th><th>Price</th><th>Qty</th><th>Action</th></tr></thead>
+   <tbody id="stockTableBody"></tbody>
+  </table>
+ </div>
+</div>
+</div>
+
+<!-- REPORTS TAB -->
+<div class="tab-pane fade" id="tabReports">
+<div class="card p-3 border-0 shadow-sm">
+ <h5 class="fw-bold" data-i18n="reports">Reports</h5>
+ <p>Today Sales: <b>Rs. <span id="repTodaySales">0</span></b></p>
+</div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div class="tab-pane fade" id="tabSettings">
+<div class="card p-3 border-0 shadow-sm">
+ <h5>License Info</h5>
+ <p>Device Key: <b id="dispDeviceKey">...</b></p>
+ <p>Expiry Date: <b id="dispExpiryDate">...</b></p>
+ <button class="btn btn-outline-primary" onclick="promptRenewalKey()">Enter License Code</button>
+ <button class="btn btn-outline-secondary ms-2" onclick="showMasterAdminLogin()">Developer Portal</button>
+</div>
+</div>
+
+</div>
+</div>
+
+<!-- QR SCANNER MODAL -->
+<div class="modal fade" id="qrModal" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+ <div class="modal-header">
+  <h5 class="modal-title">QR/Barcode Camera Scanner</h5>
+  <button type="button" class="btn-close" onclick="closeQrScanner()"></button>
+ </div>
+ <div class="modal-body text-center">
+  <div id="reader"></div>
+  <p id="scannedResult" class="mt-2 text-success fw-bold"></p>
+ </div>
+</div>
+</div>
+</div>
+
+<!-- ITEM MODAL -->
+<div class="modal fade" id="itemModal">
+<div class="modal-dialog">
+<div class="modal-content">
+<form id="itemForm">
+<div class="modal-body">
+ <input type="hidden" id="itemId">
+ <input id="itemCode" class="form-control mb-2" placeholder="Code/Barcode" required>
+ <input id="itemName" class="form-control mb-2" placeholder="Name" required>
+ <input id="itemCost" type="number" step=".01" class="form-control mb-2" placeholder="Cost" required>
+ <input id="itemPrice" type="number" step=".01" class="form-control mb-2" placeholder="Price" required>
+ <input id="itemQty" type="number" class="form-control mb-2" placeholder="Qty" required>
+</div>
+<div class="modal-footer"><button class="btn btn-primary w-100">Save</button></div>
+</form>
+</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+const MASTER_DEV_PIN = "9988";
+let html5QrcodeScanner = null;
 
-/* LOGIN */
+const dict = {
+ si: {
+  pos: "POS (විකුණුම්)", stock: "තොග (Stock)", reports: "වාර්තා", settings: "සැකසුම්",
+  searchItem: "භාණ්ඩ සෙවීම", scanQr: "කැමරා QR Scan", cart: "වත්මන් බිල්පත",
+  total: "මුළු එකතුව", checkout: "බිල්පත නිකුත් කරන්න"
+ },
+ en: {
+  pos: "POS", stock: "Stock", reports: "Reports", settings: "Settings",
+  searchItem: "Search Items", scanQr: "Camera QR Scan", cart: "Current Cart",
+  total: "Total", checkout: "Checkout"
+ }
+};
 
-function login(){
+let config = JSON.parse(localStorage.getItem("sys_config")) || {
+ lang: "si", initialized: false, storeName: "My Shop", username: "", pin: "",
+ deviceKey: "DEV-" + Math.random().toString(36).substring(2,8).toUpperCase(),
+ licenseStatus: "ACTIVE", expiryDate: getFutureDate(30), developerWhatsApp: "94707602670"
+};
 
-let u=document.getElementById("user").value;
-let p=document.getElementById("pass").value;
-
-if(u==="admin" && p==="Pramod 123456"){
-
-document.getElementById("login").style.display="none";
-document.getElementById("app").style.display="block";
-
-showHistory();
-
-}else{
-
-document.getElementById("msg").innerText=
-"Username හෝ Password වැරදියි.";
-
-}
-
-}
-
-
-/* GOVISETHA RESULTS */
-
-const results = [
-
-{
-date:"26/09/2026",
-draw:"4564",
-letter:"D",
-numbers:[10,22,69,76]
-},
-
-{
-date:"25/09/2026",
-draw:"4563",
-letter:"T",
-numbers:[16,30,34,51]
-},
-
-{
-date:"24/09/2026",
-draw:"4562",
-letter:"H",
-numbers:[20,25,53,54]
-},
-
-{
-date:"23/09/2026",
-draw:"4561",
-letter:"L",
-numbers:[35,40,76,79]
-},
-
-{
-date:"22/09/2026",
-draw:"4560",
-letter:"I",
-numbers:[33,44,64,71]
-},
-
-{
-date:"21/09/2026",
-draw:"4559",
-letter:"O",
-numbers:[22,41,49,58]
-},
-
-{
-date:"20/09/2026",
-draw:"4558",
-letter:"D",
-numbers:[36,38,42,74]
-},
-
-{
-date:"19/09/2026",
-draw:"4557",
-letter:"W",
-numbers:[3,32,36,62]
-},
-
-{
-date:"18/09/2026",
-draw:"4556",
-letter:"I",
-numbers:[2,24,43,69]
-},
-
-{
-date:"17/09/2026",
-draw:"4555",
-letter:"Y",
-numbers:[8,9,36,69]
-},
-
-{
-date:"16/09/2026",
-draw:"4554",
-letter:"G",
-numbers:[14,30,55,64]
-},
-
-{
-date:"15/09/2026",
-draw:"4553",
-letter:"M",
-numbers:[32,38,42,72]
-},
-
-{
-date:"14/09/2026",
-draw:"4552",
-letter:"I",
-numbers:[3,13,47,50]
-},
-
-{
-date:"13/09/2026",
-draw:"4551",
-letter:"R",
-numbers:[15,22,37,41]
-},
-
-{
-date:"12/09/2026",
-draw:"4550",
-letter:"Y",
-numbers:[6,13,28,74]
-},
-
-{
-date:"11/09/2026",
-draw:"4549",
-letter:"I",
-numbers:[2,4,24,73]
-},
-
-{
-date:"10/09/2026",
-draw:"4548",
-letter:"U",
-numbers:[20,45,50,74]
-},
-
-{
-date:"09/09/2026",
-draw:"4547",
-letter:"N",
-numbers:[25,30,33,44]
-},
-
-{
-date:"08/09/2026",
-draw:"4546",
-letter:"P",
-numbers:[27,43,67,74]
-},
-
-{
-date:"07/09/2026",
-draw:"4545",
-letter:"J",
-numbers:[45,48,53,59]
-},
-
-{
-date:"06/09/2026",
-draw:"4544",
-letter:"I",
-numbers:[1,65,77,79]
-}
-
+let items = JSON.parse(localStorage.getItem("sys_items")) || [
+ {id:1, code:"101", name:"සීනි 1kg", cost:240, price:280, qty:50},
+ {id:2, code:"102", name:"පරිප්පු 1kg", cost:290, price:340, qty:40}
 ];
+let sales = JSON.parse(localStorage.getItem("sys_sales")) || [];
+let cart = [];
 
-
-/* SHOW HISTORY */
-
-function showHistory(){
-
-document.getElementById("drawCount").innerText=
-results.length+" දිනුම්";
-
-let h="";
-
-results.forEach(r=>{
-
-h+=`
-<div class="history">
-
-<b>📅 ${r.date}</b><br>
-
-Draw No:
-<b>${r.draw}</b><br>
-
-අකුර:
-<b>${r.letter}</b><br>
-
-දිනුම් අංක:
-<b>
-${r.numbers.map(n=>
-String(n).padStart(2,"0")
-).join(", ")}
-</b>
-
-</div>
-`;
-
-});
-
-document.getElementById("history").innerHTML=h;
-
+function saveState(){
+ localStorage.setItem("sys_config", JSON.stringify(config));
+ localStorage.setItem("sys_items", JSON.stringify(items));
+ localStorage.setItem("sys_sales", JSON.stringify(sales));
 }
 
-
-/* STATISTICS */
-
-function showStatistics(){
-
-let count={};
-
-results.forEach(r=>{
-
-r.numbers.forEach(n=>{
-
-count[n]=(count[n]||0)+1;
-
-});
-
-});
-
-
-let sorted=Object.entries(count)
-.sort((a,b)=>b[1]-a[1]);
-
-
-let text=
-"<b>අංක පැමිණි වාර ගණන</b><br><br>";
-
-
-sorted.forEach(x=>{
-
-text+=`
-<div class="stat">
-අංක <b>${String(x[0]).padStart(2,"0")}</b>
-→ <b>${x[1]}</b> වරක්
-</div>
-`;
-
-});
-
-
-document.getElementById("result").innerHTML=text;
-
+function getFutureDate(days){
+ let d = new Date(); d.setDate(d.getDate() + days);
+ return d.toISOString().split("T")[0];
 }
 
+window.onload = () => {
+ changeLanguage(config.lang);
+ checkLicenseAndAuth();
+ renderAll();
+};
+
+function changeLanguage(lang){
+ config.lang = lang;
+ document.getElementById("langSelect").value = lang;
+ document.querySelectorAll("[data-i18n]").forEach(el => {
+  let key = el.getAttribute("data-i18n");
+  if(dict[lang][key]) el.innerText = dict[lang][key];
+ });
+ saveState();
+}
+
+function checkLicenseAndAuth(){
+ let overlay = document.getElementById("appLockOverlay");
+ let content = document.getElementById("lockCardContent");
+ let today = new Date().toISOString().split("T")[0];
+
+ if(!config.initialized){
+  overlay.style.display = "flex";
+  content.innerHTML = `
+  <h4>App Setup</h4>
+  <form onsubmit="completeSetup(event)">
+  <input id="setupStore" class="form-control mb-2" placeholder="Shop Name" required>
+  <input id="setupUser" class="form-control mb-2" placeholder="Username" required>
+  <input id="setupPin" class="form-control pin-input mb-3" maxlength="4" type="password" placeholder="****" required>
+  <button class="btn btn-primary w-100">Start</button>
+  </form>`;
+  return;
+ }
+
+ if(config.licenseStatus === "SUSPENDED" || config.expiryDate < today){
+  overlay.style.display = "flex";
+  content.innerHTML = `
+  <h4 class="text-danger">ලයිසන්ස් කාලය අවසන්!</h4>
+  <p>Device Key: <b>${config.deviceKey}</b></p>
+  <a class="btn btn-success w-100 mb-2" href="https://wa.me/${config.developerWhatsApp}?text=Renew%20${config.deviceKey}">WhatsApp Developer</a>
+  <button class="btn btn-outline-primary w-100 mb-2" onclick="promptRenewalKey()">Enter Code</button>
+  <button class="btn btn-link btn-sm" onclick="showMasterAdminLogin()">Developer Portal</button>`;
+  return;
+ }
+
+ if(sessionStorage.getItem("sys_unlocked") !== "true"){
+  overlay.style.display = "flex";
+  content.innerHTML = `
+  <h4>${config.storeName}</h4>
+  <form onsubmit="unlockApp(event)">
+  <input id="unlockPinInput" class="form-control pin-input mb-3" maxlength="4" type="password" autofocus required>
+  <button class="btn btn-primary w-100">Unlock</button>
+  </form>`;
+  return;
+ }
+
+ overlay.style.display = "none";
+}
+
+function completeSetup(e){
+ e.preventDefault();
+ config.storeName = document.getElementById("setupStore").value;
+ config.username = document.getElementById("setupUser").value;
+ config.pin = document.getElementById("setupPin").value;
+ config.initialized = true;
+ saveState();
+ sessionStorage.setItem("sys_unlocked", "true");
+ checkLicenseAndAuth();
+ renderAll();
+}
+
+function unlockApp(e){
+ e.preventDefault();
+ if(document.getElementById("unlockPinInput").value === config.pin || document.getElementById("unlockPinInput").value === MASTER_DEV_PIN){
+  sessionStorage.setItem("sys_unlocked", "true");
+  checkLicenseAndAuth();
+ } else { alert("Wrong PIN!"); }
+}
+
+function lockApp(){ sessionStorage.removeItem("sys_unlocked"); checkLicenseAndAuth(); }
+
+function promptRenewalKey(){
+ let k = prompt("Developer මැසේජ් එකෙන් ආපු Renewal Code එක ගහන්න:");
+ if(k === "ACTIVATE-30" || k === "RENEW-100"){
+  config.expiryDate = getFutureDate(k === "ACTIVATE-30" ? 30 : 100);
+  config.licenseStatus = "ACTIVE";
+  saveState();
+  alert("සාර්ථකව Active විය!");
+  location.reload();
+ } else { alert("වැරදි Code එකක්!"); }
+}
+
+function showMasterAdminLogin(){
+ if(prompt("Dev PIN:") === MASTER_DEV_PIN){
+  let d = parseInt(prompt("දින ගණන:", "30"));
+  if(d){
+   config.expiryDate = getFutureDate(d);
+   config.licenseStatus = "ACTIVE";
+   saveState();
+   location.reload();
+  }
+ }
+}
+
+/* CAMERA QR SCANNER */
+function openQrScanner(){
+ let modal = new bootstrap.Modal(document.getElementById('qrModal'));
+ modal.show();
+ html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+ html5QrcodeScanner.render((decodedText) => {
+  document.getElementById("scannedResult").innerText = "Scanned: " + decodedText;
+  let i = items.find(x => x.code === decodedText);
+  if(i){ addToCart(i.id); }
+  navigator.clipboard.writeText(decodedText);
+ }, (error) => {});
+}
+
+function closeQrScanner(){
+ if(html5QrcodeScanner){ html5QrcodeScanner.clear(); }
+ bootstrap.Modal.getInstance(document.getElementById('qrModal')).hide();
+}
+
+function renderAll(){
+ document.getElementById("navStoreName").innerText = config.storeName;
+ document.getElementById("dispDeviceKey").innerText = config.deviceKey;
+ document.getElementById("dispExpiryDate").innerText = config.expiryDate;
+ renderPosItems();
+ renderCart();
+ renderStock();
+}
+
+function renderPosItems(){
+ document.getElementById("posItemList").innerHTML = items.map(it => `
+ <div class="col-6 col-md-4">
+  <div class="card p-2 text-center h-100" onclick="addToCart(${it.id})">
+   <b>${it.name}</b><br><small>${it.code}</small>
+   <div class="text-success fw-bold">Rs.${it.price.toFixed(2)}</div>
+  </div>
+ </div>`).join("");
+}
+
+function filterPosItems(){
+ let q = document.getElementById("posSearch").value.toLowerCase();
+ document.getElementById("posItemList").innerHTML = items.filter(i=>i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q)).map(it => `
+ <div class="col-6 col-md-4"><div class="card p-2 text-center h-100" onclick="addToCart(${it.id})"><b>${it.name}</b><br><small>${it.code}</small><div class="text-success fw-bold">Rs.${it.price.toFixed(2)}</div></div></div>`).join("");
+}
+
+function addToCart(id){
+ let it = items.find(i=>i.id===id);
+ let c = cart.find(x=>x.id===id);
+ if(c){ c.qty++; }else{ cart.push({id:it.id, name:it.name, price:it.price, cost:it.cost, qty:1}); }
+ renderCart();
+}
+
+function renderCart(){
+ let tot = 0;
+ document.getElementById("cartTableBody").innerHTML = cart.map(c => {
+  tot += c.price * c.qty;
+  return `<tr><td>${c.name}</td><td>x${c.qty}</td><td>${(c.price*c.qty).toFixed(2)}</td></tr>`;
+ }).join("");
+ document.getElementById("cartTotal").innerText = tot.toFixed(2);
+}
+
+function checkout(){
+ if(!cart.length) return alert("Cart empty!");
+ sales.unshift({id: Date.now(), total: cart.reduce((s,i)=>s+i.price*i.qty, 0), time: new Date().toLocaleString()});
+ cart = [];
+ saveState();
+ renderCart();
+ alert("Bill Paid!");
+}
+
+function renderStock(){
+ document.getElementById("stockTableBody").innerHTML = items.map(i => `
+ <tr><td>${i.code}</td><td>${i.name}</td><td>${i.cost}</td><td>${i.price}</td><td>${i.qty}</td>
+ <td><button class="btn btn-sm btn-danger" onclick="deleteItem(${i.id})">x</button></td></tr>`).join("");
+}
+
+function showAddItemModal(){ new bootstrap.Modal(document.getElementById('itemModal')).show(); }
+
+document.getElementById("itemForm").onsubmit = e => {
+ e.preventDefault();
+ items.push({
+  id: Date.now(),
+  code: document.getElementById("itemCode").value,
+  name: document.getElementById("itemName").value,
+  cost: Number(document.getElementById("itemCost").value),
+  price: Number(document.getElementById("itemPrice").value),
+  qty: Number(document.getElementById("itemQty").value)
+ });
+ saveState();
+ bootstrap.Modal.getInstance(document.getElementById('itemModal')).hide();
+ renderAll();
+};
+
+function deleteItem(id){ items = items.filter(i=>i.id!==id); saveState(); renderAll(); }
 </script>
 
 </body>
